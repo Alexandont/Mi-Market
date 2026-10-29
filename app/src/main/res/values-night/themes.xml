@@ -1,0 +1,6 @@
+<resources>
+    <style name="Base.Theme.MiMarket" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/verde_mi_market</item>
+        <item name="android:windowBackground">@color/fondo_noche_mi_market</item>
+    </style>
+</resources>

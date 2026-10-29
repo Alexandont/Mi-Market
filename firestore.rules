@@ -1,0 +1,86 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function autenticado() {
+      return request.auth != null;
+    }
+
+    function esDueno(uid) {
+      return autenticado() && request.auth.uid == uid;
+    }
+
+    function esAdmin() {
+      return autenticado()
+        && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+        && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'admin';
+    }
+
+    function productoValido() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['nombre', 'descripcion', 'categoria', 'precio', 'stock',
+                               'imagenUrl', 'imagenRuta', 'creadorUid', 'creadoEn', 'actualizadoEn'])
+        && d.nombre is string && d.nombre.size() >= 2 && d.nombre.size() <= 80
+        && d.descripcion is string && d.descripcion.size() <= 500
+        && d.categoria is string && d.categoria.size() > 0
+        && d.precio is number && d.precio > 0 && d.precio <= 100000
+        && d.stock is int && d.stock >= 0
+        && d.imagenUrl is string
+        && d.imagenRuta is string;
+    }
+
+    function perfilValido() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['nombre', 'email', 'rol', 'direccionEntrega', 'latEntrega', 'lngEntrega',
+                               'aceptoPrivacidad', 'consentimientoUbicacion',
+                               'fechaConsentimientoUbicacion', 'creadoEn'])
+        && d.nombre is string && d.nombre.size() <= 60
+        && d.email is string;
+    }
+
+    function pedidoValido() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['items', 'total', 'direccionEntrega', 'latEntrega', 'lngEntrega', 'estado', 'fecha'])
+        && d.items is list && d.items.size() > 0 && d.items.size() <= 100
+        && d.total is number && d.total > 0
+        && d.estado == 'Registrado'
+        && d.fecha is int;
+    }
+
+    match /productos/{productoId} {
+      allow read: if autenticado();
+      allow create: if autenticado()
+        && request.resource.data.creadorUid == request.auth.uid
+        && productoValido();
+      allow update: if autenticado()
+        && (resource.data.creadorUid == request.auth.uid || esAdmin())
+        && request.resource.data.creadorUid == resource.data.creadorUid
+        && productoValido();
+      allow delete: if autenticado()
+        && (resource.data.creadorUid == request.auth.uid || esAdmin());
+    }
+
+    match /tiendas/{tiendaId} {
+      allow read: if autenticado();
+      allow write: if esAdmin();
+    }
+
+    match /usuarios/{uid} {
+      allow read, delete: if esDueno(uid);
+      allow create: if esDueno(uid)
+        && request.resource.data.rol == 'cliente'
+        && perfilValido();
+      allow update: if esDueno(uid)
+        && request.resource.data.rol == resource.data.rol
+        && request.resource.data.email == resource.data.email
+        && perfilValido();
+
+      match /pedidos/{pedidoId} {
+        allow read, delete: if esDueno(uid);
+        allow create: if esDueno(uid) && pedidoValido();
+        allow update: if false;
+      }
+    }
+  }
+}

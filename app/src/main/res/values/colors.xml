@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="verde_mi_market">#FF1B7F4C</color>
+    <color name="fondo_mi_market">#FFF4F7F5</color>
+    <color name="fondo_noche_mi_market">#FF111614</color>
+</resources>

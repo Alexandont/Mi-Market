@@ -1,0 +1,30 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function autenticado() {
+      return request.auth != null;
+    }
+
+    function esAdmin() {
+      return autenticado()
+        && firestore.get(/databases/(default)/documents/usuarios/$(request.auth.uid)).data.rol == 'admin';
+    }
+
+    function imagenValida() {
+      return request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    match /productos/{uid}/{archivo} {
+      allow read: if autenticado();
+      allow create, update: if autenticado() && request.auth.uid == uid && imagenValida();
+      allow delete: if autenticado() && (request.auth.uid == uid || esAdmin());
+    }
+
+    match /{todo=**} {
+      allow read, write: if false;
+    }
+  }
+}
